@@ -113,7 +113,7 @@ def copy_bytes(source, num_bytes):
 bytes_written = 0
 
 
-def _write(data):
+def write(data):
     # sys.stdout.buffer.write(data)
     global bytes_written, unifi_socket, host, port, socket_opened_at
 
@@ -143,17 +143,11 @@ def _write(data):
                 unifi_socket.close()
             except:
                 pass
-            unifi_socket = None
-            retries += 1
-            time.sleep(2+retries)
+            # unifi_socket = None
+            # retries += 1
+            # time.sleep(2+retries)
+            sys.exit(0)  # We exit to force a clean reset of the socket.  This will be respawned.
     bytes_written += len(data)
-
-
-def write(data):
-    global write_lock
-
-    with write_lock:
-        _write(data)
 
 
 def flush():
@@ -247,6 +241,4 @@ if __name__ == "__main__":
     sys.stdin = open(0, "rb")
     host = sys.argv[1]
     port = int(sys.argv[2])
-    from signal import signal, SIGPIPE, SIG_DFL
-    signal(SIGPIPE, SIG_DFL)
     main()
