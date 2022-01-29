@@ -5,6 +5,8 @@ Helper program to inject absolute wall clock time into FLV stream for recordings
 import struct
 import sys
 import time
+import timeit
+from io import BytesIO, SEEK_SET
 
 
 def make_ui8(num):
@@ -29,21 +31,29 @@ def make_ui16(num):
     return struct.pack(">H", num)
 
 
+VALUE_TYPE_STRING = make_ui8(2)
+VALUE_TYPE_OBJECT = make_ui8(3)
+VALUE_TYPE_NUMBER = make_ui8(0)
+END_OF_OBJECT = make_ui24(9)
+TAG_TYPE_SCRIPT = make_ui8(18)
+STREAM_ID = make_ui24(0)
+
+
 def create_script_tag(name, data, timestamp=0):
-    payload = make_ui8(2)  # VALUE_TYPE_STRING
+    payload = VALUE_TYPE_STRING  # VALUE_TYPE_STRING
 
     payload += make_string(name)
-    payload += make_ui8(3)  # VALUE_TYPE_OBJECT
+    payload += VALUE_TYPE_OBJECT  # VALUE_TYPE_OBJECT
 
     for k, v in data.items():
         payload += make_string(k)
-        payload += make_ui8(0)  # VALUE_TYPE_NUMBER
+        payload += VALUE_TYPE_NUMBER  # VALUE_TYPE_NUMBER
         payload += make_number(v)
-    payload += make_ui24(9)  # End of object
+    payload += END_OF_OBJECT  # End of object
 
-    tag_type = make_ui8(18)  # 18 = TAG_TYPE_SCRIPT
+    tag_type = TAG_TYPE_SCRIPT  # 18 = TAG_TYPE_SCRIPT
     timestamp = make_si32_extended(timestamp)
-    stream_id = make_ui24(0)
+    stream_id = STREAM_ID
 
     data_size = len(payload)
     tag_size = data_size + 11
@@ -60,10 +70,15 @@ def create_script_tag(name, data, timestamp=0):
     )
 
 
+strings = {}
+
+
 def make_string(string):
-    s = string.encode("UTF-8")
-    length = make_ui16(len(s))
-    return length + string.encode("UTF-8")
+    if string not in strings:
+        s = string.encode("UTF-8")
+        length = make_ui16(len(s))
+        strings[string] = length + s
+    return strings[string]
 
 
 def make_number(num):
@@ -81,6 +96,7 @@ def read_bytes(source, num_bytes):
         else:
             return buf
     return buf
+
 
 
 def write(data):
@@ -128,11 +144,6 @@ def main():
         high, low = struct.unpack(">BH", header[5:8])
         payload_size = (high << 16) + low
 
-        # Get timestamp to inject into clock sync tag
-        low_high = header[8:12]
-        combined = bytes([low_high[3]]) + low_high[:3]
-        timestamp = struct.unpack(">i", combined)[0]
-
         if i % 3:
             # Insert a custom packet every so often for time synchronization
 
@@ -143,6 +154,11 @@ def main():
             #   data["wallClock"] = time.time() * 1000
             #   packet_to_inject = flvlib.tags.create_script_tag(
             #       "onClockSync", data, timestamp))
+
+            # Get timestamp to inject into clock sync tag
+            low_high = header[8:12]
+            combined = bytes([low_high[3]]) + low_high[:3]
+            timestamp = struct.unpack(">i", combined)[0]
 
             data = {
                 "streamClock": int(timestamp),
