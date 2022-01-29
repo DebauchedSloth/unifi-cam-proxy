@@ -103,6 +103,10 @@ def write(data):
     sys.stdout.buffer.write(data)
 
 
+def flush():
+    sys.stdout.buffer.flush()
+
+
 def main():
     if sys.platform == "win32":
         import msvcrt
@@ -175,7 +179,7 @@ def main():
             # Write the original packet
             write(header)
             write(read_bytes(source, payload_size))
-
+        flush()
         i += 1
 
 
