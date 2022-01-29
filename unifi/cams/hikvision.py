@@ -8,7 +8,7 @@ from typing import Any, Dict, Union
 
 import httpx
 import xmltodict
-from hikvisionapi import AsyncClient
+# from hikvisionapi import AsyncClient
 
 from unifi.cams.base import UnifiCamBase
 
@@ -18,12 +18,12 @@ class HikvisionCam(UnifiCamBase):
         super().__init__(args, logger)
         self.snapshot_dir = tempfile.mkdtemp()
         self.streams = {}
-        self.cam = AsyncClient(
-            f"http://{self.args.ip}",
-            self.args.username,
-            self.args.password,
-            timeout=None,
-        )
+        # self.cam = AsyncClient(
+        #     f"http://{self.args.ip}",
+        #     self.args.username,
+        #     self.args.password,
+        #     timeout=None,
+        # )
         self.channel = args.channel
         self.substream = args.substream
         self.ptz_supported = False

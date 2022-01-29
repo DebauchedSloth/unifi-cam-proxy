@@ -39,7 +39,7 @@ TAG_TYPE_SCRIPT = make_ui8(18)
 STREAM_ID = make_ui24(0)
 
 
-def create_script_tag(name, data, timestamp=0):
+def write_script_tag(name, data, timestamp=0):
     payload = VALUE_TYPE_STRING  # VALUE_TYPE_STRING
 
     payload += make_string(name)
@@ -58,16 +58,12 @@ def create_script_tag(name, data, timestamp=0):
     data_size = len(payload)
     tag_size = data_size + 11
 
-    return b"".join(
-        [
-            tag_type,
-            make_ui24(data_size),
-            timestamp,
-            stream_id,
-            payload,
-            make_ui32(tag_size),
-        ]
-    )
+    write(tag_type)
+    write(make_ui24(data_size))
+    write(timestamp)
+    write(stream_id)
+    write(payload)
+    write(make_ui32(tag_size))
 
 
 strings = {}
@@ -98,14 +94,33 @@ def read_bytes(source, num_bytes):
     return buf
 
 
+def copy_bytes(source, num_bytes):
+    read_bytes = 0
+    while read_bytes < num_bytes:
+        d_in = source.read(num_bytes - read_bytes)
+        if d_in:
+            read_bytes += len(d_in)
+            write(d_in)
+        else:
+            return
+
+
+bytes_written = 0
+
 
 def write(data):
     # sys.stdout.buffer.write(data)
+    global bytes_written
+
+    bytes_written += len(data)
     sys.stdout.write(data)
 
 
 def flush():
+    global bytes_written
     # sys.stdout.buffer.flush()
+    # print(f"Wrote {bytes_written} bytes", file=sys.stderr)
+    bytes_written = 0
     pass
 
 
@@ -173,15 +188,14 @@ def main():
                 "wallClock": time.time() * 1000,
             }
             write(make_ui32(payload_size + 15))  # Write previous packet size
-            write(create_script_tag("onClockSync", data, timestamp))
+            write_script_tag("onClockSync", data, timestamp)
 
             # Write rest of original packet minus previous packet size
             write(header[4:])
-            write(read_bytes(source, payload_size))
         else:
             # Write the original packet
             write(header)
-            write(read_bytes(source, payload_size))
+        copy_bytes(source, payload_size)
         flush()
         i += 1
 
