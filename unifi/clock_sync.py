@@ -100,11 +100,13 @@ def read_bytes(source, num_bytes):
 
 
 def write(data):
-    sys.stdout.buffer.write(data)
+    # sys.stdout.buffer.write(data)
+    sys.stdout.write(data)
 
 
 def flush():
-    sys.stdout.buffer.flush()
+    # sys.stdout.buffer.flush()
+    pass
 
 
 def main():
@@ -113,7 +115,8 @@ def main():
         import os
 
         msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
-    source = sys.stdin.buffer
+    # source = sys.stdin.buffer
+    source = sys.stdin
 
     header = read_bytes(source, 3)
 
@@ -184,4 +187,9 @@ def main():
 
 
 if __name__ == "__main__":
+    # Make a larger stdout buffer.
+    # sys.stdout = open(1, "wb", buffering=8 * 1024 * 1024)
+    sys.stdout = open(1, "wb")
+    sys.stdin = open(0, "rb")
+    print(sys.argv, file=sys.stderr)
     main()
