@@ -6,6 +6,7 @@ RUN apk add --update ffmpeg netcat-openbsd git
 
 COPY . .
 RUN pip install .
+RUN which unifi-cam-proxy
 
 COPY ./docker/entrypoint.sh /
 

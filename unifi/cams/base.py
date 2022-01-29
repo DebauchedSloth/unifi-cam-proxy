@@ -907,8 +907,7 @@ class UnifiCamBase(metaclass=ABCMeta):
                 f" -rtsp_transport {self.args.rtsp_transport}"
                 f' -i "{source}" {self.get_extra_ffmpeg_args()}'
                 f" -metadata streamname={stream_name} -f flv -"
-                f" | {sys.executable} -m unifi.clock_sync"
-                f" | nc {destination[0]} {destination[1]}"
+                f" | {sys.executable} -m unifi.clock_sync {destination[0]} {destination[1]}"
             )
 
             if is_dead:
