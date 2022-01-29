@@ -1,12 +1,12 @@
 """"
 Helper program to inject absolute wall clock time into FLV stream for recordings
 """
-
+import os
 import struct
 import sys
+import threading
 import time
-import timeit
-from io import BytesIO, SEEK_SET
+import socket
 
 
 def make_ui8(num):
@@ -37,6 +37,11 @@ VALUE_TYPE_NUMBER = make_ui8(0)
 END_OF_OBJECT = make_ui24(9)
 TAG_TYPE_SCRIPT = make_ui8(18)
 STREAM_ID = make_ui24(0)
+host = ''
+port = ''
+unifi_socket = None
+socket_opened_at = None
+write_lock = threading.RLock()
 
 
 def write_script_tag(name, data, timestamp=0):
@@ -108,12 +113,47 @@ def copy_bytes(source, num_bytes):
 bytes_written = 0
 
 
-def write(data):
+def _write(data):
     # sys.stdout.buffer.write(data)
-    global bytes_written
+    global bytes_written, unifi_socket, host, port, socket_opened_at
 
+    retries = 0
+    while retries < 8:
+        # if not unifi_socket or ((time.time() - socket_opened_at) > 12.0):
+        if not unifi_socket:
+            if not unifi_socket:
+                reason = "socket not opened"
+            else:
+                reason = f"socket age {(time.time() - socket_opened_at):.2f}"
+            print(f"Opening socket in pid {os.getpid()} {reason}", file=sys.stderr)
+            try:
+                unifi_socket = socket.create_connection((host, port))
+                unifi_socket.settimeout(None)
+                socket_opened_at = time.time()
+            except Exception as e:
+                print(f"Exception {e} opening socket", file=sys.stderr)
+                retries += 1
+                time.sleep(retries)
+        try:
+            unifi_socket.sendall(data)
+            break
+        except Exception as e:
+            print(f"Exception {e} writing socket", file=sys.stderr)
+            try:
+                unifi_socket.close()
+            except:
+                pass
+            unifi_socket = None
+            retries += 1
+            time.sleep(2+retries)
     bytes_written += len(data)
-    sys.stdout.write(data)
+
+
+def write(data):
+    global write_lock
+
+    with write_lock:
+        _write(data)
 
 
 def flush():
@@ -205,5 +245,8 @@ if __name__ == "__main__":
     # sys.stdout = open(1, "wb", buffering=8 * 1024 * 1024)
     sys.stdout = open(1, "wb")
     sys.stdin = open(0, "rb")
-    print(sys.argv, file=sys.stderr)
+    host = sys.argv[1]
+    port = int(sys.argv[2])
+    from signal import signal, SIGPIPE, SIG_DFL
+    signal(SIGPIPE, SIG_DFL)
     main()
