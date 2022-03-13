@@ -922,6 +922,7 @@ class UnifiCamBase(metaclass=ABCMeta):
                 f' -i "{source}" {self.get_extra_ffmpeg_args()}'
                 f" -metadata streamname={stream_name} -f flv -"
                 f" | {sys.executable} -m unifi.clock_sync {destination[0]} {destination[1]}"
+                f" | nc {destination[0]} {destination[1]}"
             )
 
             if is_dead:

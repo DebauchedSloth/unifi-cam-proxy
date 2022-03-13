@@ -113,7 +113,7 @@ def copy_bytes(source, num_bytes):
 bytes_written = 0
 
 
-def write(data):
+def write_socket(data):
     # sys.stdout.buffer.write(data)
     global bytes_written, unifi_socket, host, port, socket_opened_at
 
@@ -143,10 +143,19 @@ def write(data):
                 unifi_socket.close()
             except:
                 pass
-            # unifi_socket = None
-            # retries += 1
-            # time.sleep(2+retries)
-            sys.exit(0)  # We exit to force a clean reset of the socket.  This will be respawned.
+            unifi_socket = None
+            retries += 1
+            if retries > 4:
+                print(f"Too many socket retries: exiting", file=sys.stderr)
+                sys.exit(0)  # We exit to force a clean reset of the socket.  This will be respawned.
+            print(f"Sleeping before retry", file=sys.stderr)
+            time.sleep(2+retries)
+    bytes_written += len(data)
+
+
+def write(data):
+    global bytes_written
+    sys.stdout.write(data)
     bytes_written += len(data)
 
 
